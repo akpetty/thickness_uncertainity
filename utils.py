@@ -13,7 +13,7 @@ import pyproj
 import xarray as xr
 from scipy.interpolate import griddata
 
-def get_atl10_freeboards(fileT, beam=beamStr, minFreeboard=0, maxFreeboard=10, epsg_string="3411"):
+def get_atl10_freeboards(fileT, beam, minFreeboard=0, maxFreeboard=10, epsg_string="3411"):
     """ Pandas/numpy ATL10 reader
     Original function written by Alek Petty, June 2018 (alek.a.petty@nasa.gov)
 
