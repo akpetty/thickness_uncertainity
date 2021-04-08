@@ -52,13 +52,10 @@ def get_atl10_freeboards(fileT, beam, minFreeboard=0, maxFreeboard=10, epsg_stri
     freeboard_quality=f1[beam]['freeboard_beam_segment']['beam_freeboard']['beam_fb_quality_flag'][:]
     freeboard_sigma=f1[beam]['freeboard_beam_segment']['beam_freeboard']['beam_fb_sigma'][:]
     
-    # Getting a lot of high values/NaNs - why is that?!
+    # We don't get a freebaord sigma estimate when we have an interpoatled sea surface reference height (as part of the freeboard sigma is the sea surface height error).
+    # We are working on a fix to this but in the meanwhile, nan these and set these to the max sigma in the granule. Not ideal but should be fixed for r005.
     freeboard_sigma[np.where(freeboard_sigma>0.2)]=np.nan
-    # Getting a lot of NaNs - why is that?!
-    # As a temporary measure set the value to the max sigma in the granule.
-
-    freeboard_sigma[np.isnan(freeboard_sigma)]=np.nanmax(freeboard_sigma)
-
+    freeboard_sigma[np.isnan(freeboard_sigma)]= np.nanmax(freeboard_sigma)
     
     # Along track distance from the equator (convert to kilometers)
     seg_x = f1[beam]['freeboard_beam_segment']['beam_freeboard']['seg_dist_x'][:]*0.001
@@ -354,16 +351,16 @@ def grid_NESOSIM_to_freeboard(dF, dNday, epsg_string='3411', outSnowVar='snowDep
         iceConcNDay = np.array(dNday.iceConc)
     
     # Remove data where snow depths less than 0 (masked).
-    mask=np.where((snowDepthNDay>0.01)&(snowDepthNDay<1)&(iceConcNDay>0.01)&np.isfinite(snowDensityNDay))
+    mask=np.where(~((snowDepthNDay>0.01)&(snowDepthNDay<1)&(iceConcNDay>0.01)&np.isfinite(snowDensityNDay)))
 
-    snowDepthNDay = snowDepthNDay[mask]
-    snowDensityNDay = snowDensityNDay[mask]
-    xptsN = xptsN[mask]
-    yptsN = yptsN[mask]
+    snowDensityNDay[mask]=np.nan
+    snowDepthNDay[mask]=np.nan
+    #xptsN = xptsN[mask]
+    #yptsN = yptsN[mask]
 
     # Use projected coordinates to find nearest NESOSIM data
-    snowDepthGISs = griddata((xptsN, yptsN), snowDepthNDay, (dF['xpts'].values, dF['ypts'].values), method='nearest') 
-    snowDensityGISs = griddata((xptsN, yptsN), snowDensityNDay, (dF['xpts'].values, dF['xpts'].values), method='nearest')
+    snowDepthGISs = griddata((xptsN.flatten(), yptsN.flatten()), snowDepthNDay.flatten(), (dF['xpts'].values, dF['ypts'].values), method='linear') 
+    snowDensityGISs = griddata((xptsN.flatten(), yptsN.flatten()), snowDensityNDay.flatten(), (dF['xpts'].values, dF['xpts'].values), method='linear')
    
     # Apply to dataframe
     dF[outSnowVar] = pd.Series(snowDepthGISs, index=dF.index)
